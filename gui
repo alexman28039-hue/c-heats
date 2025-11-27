@@ -16,9 +16,10 @@ getgenv().AlexGUIcurrentTab = getgenv().AlexGUIcurrentTab or "Main Scripts"
 getgenv().AlexGUIVisible = getgenv().AlexGUIVisible ~= false
 getgenv().AimbotEnabled = getgenv().AimbotEnabled or false
 getgenv().ESPEnabled = getgenv().ESPEnabled or false
-getgenv().FOVRadius = getgenv().FOVRadius or 60  -- Changed from 150 to 60
+getgenv().FOVRadius = getgenv().FOVRadius or 60 -- Changed from 150 to 60
 getgenv().FOVColor = getgenv().FOVColor or Color3.fromRGB(255, 0, 0)
-getgenv().WalkSpeedEnabled = getgenv().WalkSpeedEnabled or false  -- New walkspeed toggle
+getgenv().WalkSpeedEnabled = getgenv().WalkSpeedEnabled or false -- New walkspeed toggle
+getgenv().KillAuraEnabled = getgenv().KillAuraEnabled or false -- Now toggleable!
 
 -- WalkSpeed Handler
 local function setWalkSpeed(speed)
@@ -32,13 +33,13 @@ local function handleWalkSpeed()
     if getgenv().WalkSpeedEnabled then
         setWalkSpeed(50)
     else
-        setWalkSpeed(16)  -- Default walkspeed
+        setWalkSpeed(16) -- Default walkspeed
     end
 end
 
 -- Connect to character spawn/respawn
 LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.1)  -- Small delay to ensure humanoid loads
+    task.wait(0.1) -- Small delay to ensure humanoid loads
     handleWalkSpeed()
 end)
 
@@ -54,16 +55,14 @@ local function notify(text, duration)
     end)
 end
 
--- Kill Aura Function (so Execute All can call it)
-local function StartKillAura()
-    if getgenv().KillAuraRunning then 
-        notify("Kill Aura already running!")
-        return 
-    end
-    getgenv().KillAuraRunning = true
+-- Kill Aura Function (Toggleable and Safer)
+local KillAuraLoop
+local function startKillAura()
+    if KillAuraLoop then notify("Kill Aura already running!") return end
+    getgenv().KillAuraEnabled = true
     notify("Kill Aura ACTIVATED!")
-    task.spawn(function()
-        while getgenv().KillAuraRunning and task.wait() do
+    KillAuraLoop = task.spawn(function()
+        while getgenv().KillAuraEnabled and task.wait() do
             local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
             local root = char:FindFirstChild("HumanoidRootPart")
             if not root then continue end
@@ -85,7 +84,7 @@ local function StartKillAura()
                 local hum = closest.Character:FindFirstChild("Humanoid")
                 if head and hum and hum.Health > 0 then
                     task.spawn(function()
-                        while getgenv().KillAuraRunning and hum and hum.Health > 0 do
+                        while getgenv().KillAuraEnabled and hum and hum.Health > 0 do
                             pcall(function()
                                 game:GetService("ReplicatedStorage").RemoteEvents.DamageEvent:FireServer(hum, math.huge, head)
                             end)
@@ -95,17 +94,21 @@ local function StartKillAura()
                 end
             end
         end
+        KillAuraLoop = nil
     end)
 end
 
+local function stopKillAura()
+    getgenv().KillAuraEnabled = false
+    notify("Kill Aura DEACTIVATED!")
+end
+
 local ScreenGui
-local AimbotToggleBtn, ESPToggleBtn, WalkSpeedToggleBtn
+local AimbotToggleBtn, ESPToggleBtn, WalkSpeedToggleBtn, KillAuraToggleBtn
 
 local function toggleGUI()
     getgenv().AlexGUIVisible = not getgenv().AlexGUIVisible
-    if ScreenGui then 
-        ScreenGui.Enabled = getgenv().AlexGUIVisible 
-    end
+    if ScreenGui then ScreenGui.Enabled = getgenv().AlexGUIVisible end
     notify("GUI " .. (getgenv().AlexGUIVisible and "Opened" or "Closed"))
 end
 
@@ -122,11 +125,14 @@ local function updateToggleButtons()
         WalkSpeedToggleBtn.Text = "Speed: " .. (getgenv().WalkSpeedEnabled and "ON" or "OFF")
         WalkSpeedToggleBtn.BackgroundColor3 = getgenv().WalkSpeedEnabled and Color3.fromRGB(0,170,0) or getgenv().AlexGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
     end
+    if KillAuraToggleBtn then
+        KillAuraToggleBtn.Text = "Kill Aura: " .. (getgenv().KillAuraEnabled and "ON" or "OFF")
+        KillAuraToggleBtn.BackgroundColor3 = getgenv().KillAuraEnabled and Color3.fromRGB(0,170,0) or getgenv().AlexGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
+    end
 end
 
 local function createGUI()
     if ScreenGui and ScreenGui.Parent then ScreenGui:Destroy() end
-    
     ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "AlexGUI"
     ScreenGui.Enabled = getgenv().AlexGUIVisible
@@ -142,17 +148,14 @@ local function createGUI()
 
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(0,480,0,45); Title.Position = UDim2.new(0,15,0,8)
-    Title.BackgroundTransparency = 1; Title.Text = "Alex's GUI";
-    Title.TextColor3 = Color3.new(1,1,1)
-    Title.Font = Enum.Font.GothamBold; Title.TextSize = 28;
-    Title.Parent = Frame
+    Title.BackgroundTransparency = 1; Title.Text = "Alex's GUI"; Title.TextColor3 = Color3.new(1,1,1)
+    Title.Font = Enum.Font.GothamBold; Title.TextSize = 28; Title.Parent = Frame
 
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Size = UDim2.new(0,38,0,38); CloseBtn.Position = UDim2.new(1,-50,0,8)
     CloseBtn.BackgroundColor3 = Color3.fromRGB(220,50,50); CloseBtn.Text = "X"
     CloseBtn.TextColor3 = Color3.new(1,1,1); CloseBtn.Font = Enum.Font.GothamBold; CloseBtn.TextSize = 24
-    CloseBtn.Parent = Frame;
-    Instance.new("UICorner",CloseBtn).CornerRadius = UDim.new(0,8)
+    CloseBtn.Parent = Frame; Instance.new("UICorner",CloseBtn).CornerRadius = UDim.new(0,8)
     CloseBtn.MouseButton1Click:Connect(toggleGUI)
 
     -- Dragging
@@ -163,7 +166,9 @@ local function createGUI()
         end
     end)
     Frame.InputChanged:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseMovement then dragInput = i end
+        if i.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = i
+        end
     end)
     UserInputService.InputChanged:Connect(function(i)
         if dragging and i == dragInput then
@@ -171,7 +176,9 @@ local function createGUI()
             Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
-    Frame.InputEnded:Connect(function() dragging = false end)
+    Frame.InputEnded:Connect(function()
+        dragging = false
+    end)
 
     local function addHover(b,n,h)
         b.MouseEnter:Connect(function() TweenService:Create(b,TweenInfo.new(0.2),{Size=h}):Play() end)
@@ -179,18 +186,14 @@ local function createGUI()
     end
 
     local allButtons = {}
-
     -- Tabs
     local function createTab(name,x)
         local b = Instance.new("TextButton")
         b.Size = UDim2.new(0,160,0,45); b.Position = UDim2.new(0,x,0,60)
         b.Text = name; b.BackgroundColor3 = getgenv().AlexGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
         b.TextColor3 = Color3.new(1,1,1); b.Font = Enum.Font.GothamBold; b.TextSize = 18
-        b.Parent = Frame;
-        Instance.new("UICorner",b).CornerRadius = UDim.new(0,10)
-        addHover(b,b.Size,UDim2.new(0,170,0,50));
-        table.insert(allButtons,b);
-        return b
+        b.Parent = Frame; Instance.new("UICorner",b).CornerRadius = UDim.new(0,10)
+        addHover(b,b.Size,UDim2.new(0,170,0,50)); table.insert(allButtons,b); return b
     end
 
     local MainTabBtn = createTab("Main Scripts",15)
@@ -199,30 +202,18 @@ local function createGUI()
 
     -- Pages
     local Pages = {}
-    local MainPage = Instance.new("Frame");
-    MainPage.Size = UDim2.new(0,490,0,420); MainPage.Position = UDim2.new(0,15,0,120)
-    MainPage.BackgroundTransparency = 1; MainPage.Parent = Frame;
-    Pages["Main Scripts"] = MainPage
-
-    local AimbotPage = Instance.new("Frame");
-    AimbotPage.Size = UDim2.new(0,490,0,420); AimbotPage.Position = UDim2.new(0,15,0,120)
-    AimbotPage.BackgroundTransparency = 1; AimbotPage.Visible = false; AimbotPage.Parent = Frame;
-    Pages["Aimbot"] = AimbotPage
-
-    local ThemePage = Instance.new("Frame");
-    ThemePage.Size = UDim2.new(0,490,0,420); ThemePage.Position = UDim2.new(0,15,0,120)
-    ThemePage.BackgroundTransparency = 1; ThemePage.Visible = false; ThemePage.Parent = Frame;
-    Pages["Theme"] = ThemePage
+    local MainPage = Instance.new("Frame"); MainPage.Size = UDim2.new(0,490,0,420); MainPage.Position = UDim2.new(0,15,0,120)
+    MainPage.BackgroundTransparency = 1; MainPage.Parent = Frame; Pages["Main Scripts"] = MainPage
+    local AimbotPage = Instance.new("Frame"); AimbotPage.Size = UDim2.new(0,490,0,420); AimbotPage.Position = UDim2.new(0,15,0,120)
+    AimbotPage.BackgroundTransparency = 1; AimbotPage.Visible = false; AimbotPage.Parent = Frame; Pages["Aimbot"] = AimbotPage
+    local ThemePage = Instance.new("Frame"); ThemePage.Size = UDim2.new(0,490,0,420); ThemePage.Position = UDim2.new(0,15,0,120)
+    ThemePage.BackgroundTransparency = 1; ThemePage.Visible = false; ThemePage.Parent = Frame; Pages["Theme"] = ThemePage
 
     local function updateTheme(c)
-        getgenv().AlexGUIThemeColor = c;
-        Frame.BackgroundColor3 = c
-        local dark = c:Lerp(Color3.fromRGB(30,30,30),0.5);
-        local active = c:Lerp(Color3.new(1,1,1),0.6)
+        getgenv().AlexGUIThemeColor = c; Frame.BackgroundColor3 = c
+        local dark = c:Lerp(Color3.fromRGB(30,30,30),0.5); local active = c:Lerp(Color3.new(1,1,1),0.6)
         for _,b in ipairs(allButtons) do
-            local a = (b==MainTabBtn and getgenv().AlexGUIcurrentTab=="Main Scripts") or
-                      (b==AimbotTabBtn and getgenv().AlexGUIcurrentTab=="Aimbot") or
-                      (b==ThemeTabBtn and getgenv().AlexGUIcurrentTab=="Theme")
+            local a = (b==MainTabBtn and getgenv().AlexGUIcurrentTab=="Main Scripts") or (b==AimbotTabBtn and getgenv().AlexGUIcurrentTab=="Aimbot") or (b==ThemeTabBtn and getgenv().AlexGUIcurrentTab=="Theme")
             b.BackgroundColor3 = a and active or dark
         end
     end
@@ -242,27 +233,14 @@ local function createGUI()
         b.Size = UDim2.new(0,460,0,55); b.Position = UDim2.new(0,15,0,y)
         b.BackgroundColor3 = getgenv().AlexGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
         b.Text = t; b.TextColor3 = Color3.new(1,1,1); b.Font = Enum.Font.GothamBold; b.TextSize = 18
-        b.Parent = p;
-        Instance.new("UICorner",b).CornerRadius = UDim.new(0,12)
-        addHover(b,b.Size,UDim2.new(0,475,0,60));
-        table.insert(allButtons,b)
-        b.MouseButton1Click:Connect(function()
-            cb()
-        end);
-        return b
+        b.Parent = p; Instance.new("UICorner",b).CornerRadius = UDim.new(0,12)
+        addHover(b,b.Size,UDim2.new(0,475,0,60)); table.insert(allButtons,b)
+        b.MouseButton1Click:Connect(function() cb() end); return b
     end
 
     -- MAIN SCRIPTS PAGE
-    createButton(MainPage,"Infinite Yield",function()
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source',true))()
-        notify("Infinite Yield Loaded!")
-    end,10)
-
-    createButton(MainPage,"Universal Vehicle Script",function()
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/Documantation12/Universal-Vehicle-Script/main/Main.lua'))()
-        notify("Universal Vehicle Script Loaded!")
-    end,80)
-
+    createButton(MainPage,"Infinite Yield",function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source',true))() notify("Infinite Yield Loaded!") end,10)
+    createButton(MainPage,"Universal Vehicle Script",function() loadstring(game:HttpGet('https://raw.githubusercontent.com/Documantation12/Universal-Vehicle-Script/main/Main.lua'))() notify("Universal Vehicle Script Loaded!") end,80)
     -- NEW WalkSpeed Toggle Button
     WalkSpeedToggleBtn = createButton(MainPage,"",function()
         getgenv().WalkSpeedEnabled = not getgenv().WalkSpeedEnabled
@@ -270,20 +248,18 @@ local function createGUI()
         notify("WalkSpeed " .. (getgenv().WalkSpeedEnabled and "Enabled (50)" or "Disabled (16)"))
         updateToggleButtons()
     end,150)
-
-    createButton(MainPage,"RTS2 Kill Aura",StartKillAura,220)
-
-    createButton(MainPage,"Hitbox Script",function()
-        loadstring(game:HttpGet("https://pastebin.com/raw/DA8qiTD6"))()
-        notify("Hitbox Script Loaded!")
-    end,290)
-
+    -- Kill Aura Toggle
+    KillAuraToggleBtn = createButton(MainPage,"Kill Aura",function()
+        if getgenv().KillAuraEnabled then stopKillAura() else startKillAura() end
+        updateToggleButtons()
+    end,220)
+    createButton(MainPage,"Hitbox Script",function() loadstring(game:HttpGet("https://pastebin.com/raw/DA8qiTD6"))() notify("Hitbox Script Loaded!") end,290)
     -- EXECUTE ALL (now includes Kill Aura!)
     createButton(MainPage,"Execute All Scripts",function()
         loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source',true))()
         loadstring(game:HttpGet('https://raw.githubusercontent.com/Documantation12/Universal-Vehicle-Script/main/Main.lua'))()
         loadstring(game:HttpGet("https://pastebin.com/raw/DA8qiTD6"))()
-        StartKillAura() -- This starts the kill aura loop
+        startKillAura() -- This starts the kill aura loop
         notify("ALL SCRIPTS EXECUTED + Kill Aura ON!")
     end,360)
 
@@ -293,30 +269,24 @@ local function createGUI()
         notify("Aimbot " .. (getgenv().AimbotEnabled and "Enabled" or "Disabled"))
         updateToggleButtons()
     end,10)
-
     ESPToggleBtn = createButton(AimbotPage,"",function()
         getgenv().ESPEnabled = not getgenv().ESPEnabled
         notify("ESP " .. (getgenv().ESPEnabled and "Enabled" or "Disabled"))
         updateToggleButtons()
     end,80)
-
-    -- FOV Slider
+    -- FOV Slider (Smoother version - removed math.floor for finer control)
     local FOVLabel = Instance.new("TextLabel")
     FOVLabel.Size = UDim2.new(0,460,0,30); FOVLabel.Position = UDim2.new(0,15,0,150)
-    FOVLabel.BackgroundTransparency = 1; FOVLabel.Text = "FOV Radius: "..getgenv().FOVRadius
-    FOVLabel.TextColor3 = Color3.new(1,1,1); FOVLabel.Font = Enum.Font.Gotham;
-    FOVLabel.Parent = AimbotPage
-
+    FOVLabel.BackgroundTransparency = 1; FOVLabel.Text = "FOV Radius: "..math.round(getgenv().FOVRadius)
+    FOVLabel.TextColor3 = Color3.new(1,1,1); FOVLabel.Font = Enum.Font.Gotham; FOVLabel.Parent = AimbotPage
     local SliderBack = Instance.new("Frame")
     SliderBack.Size = UDim2.new(0,460,0,20); SliderBack.Position = UDim2.new(0,15,0,180)
     SliderBack.BackgroundColor3 = Color3.fromRGB(50,50,50); SliderBack.Parent = AimbotPage
     Instance.new("UICorner",SliderBack).CornerRadius = UDim.new(0,10)
-
     local SliderFill = Instance.new("Frame")
     SliderFill.Size = UDim2.new(getgenv().FOVRadius/500,0,1,0)
     SliderFill.BackgroundColor3 = Color3.fromRGB(0,170,255); SliderFill.Parent = SliderBack
     Instance.new("UICorner",SliderFill).CornerRadius = UDim.new(0,10)
-
     local dragging = false
     SliderBack.InputBegan:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
@@ -327,12 +297,11 @@ local function createGUI()
     UserInputService.InputChanged:Connect(function(i)
         if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
             local p = math.clamp((i.Position.X - SliderBack.AbsolutePosition.X)/SliderBack.AbsoluteSize.X,0,1)
-            getgenv().FOVRadius = math.floor(p*500)
+            getgenv().FOVRadius = p*500  -- Removed math.floor for smoother, finer adjustments
             SliderFill.Size = UDim2.new(p,0,1,0)
-            FOVLabel.Text = "FOV Radius: "..getgenv().FOVRadius
+            FOVLabel.Text = "FOV Radius: "..math.round(getgenv().FOVRadius)  -- Round for display only
         end
     end)
-
     -- FOV Color Picker
     local colors = {Color3.fromRGB(255,0,0),Color3.fromRGB(0,255,0),Color3.fromRGB(0,0,255),Color3.fromRGB(255,255,0),Color3.fromRGB(255,0,255),Color3.fromRGB(0,255,255),Color3.fromRGB(255,255,255)}
     for i,col in ipairs(colors) do
@@ -341,19 +310,16 @@ local function createGUI()
         b.BackgroundColor3 = col; b.Text = ""; b.Parent = AimbotPage
         Instance.new("UICorner",b).CornerRadius = UDim.new(0,8)
         addHover(b,b.Size,UDim2.new(0,55,0,55))
-        b.MouseButton1Click:Connect(function()
-            getgenv().FOVColor = col
-            notify("FOV Color Changed!")
-        end)
+        b.MouseButton1Click:Connect(function() getgenv().FOVColor = col notify("FOV Color Changed!") end)
     end
 
     -- THEME PAGE
-    local presets = {
-        Color3.fromRGB(30,30,40),Color3.fromRGB(255,0,100),Color3.fromRGB(0,170,255),Color3.fromRGB(170,0,255),
-        Color3.fromRGB(255,170,0),Color3.fromRGB(0,255,150),Color3.fromRGB(255,70,70),Color3.fromRGB(100,255,100),
-        Color3.fromRGB(255,215,0),Color3.fromRGB(0,255,255),Color3.fromRGB(255,105,180),Color3.fromRGB(138,43,226),
-        Color3.fromRGB(0,191,255),Color3.fromRGB(255,20,147),Color3.fromRGB(50,205,50),Color3.fromRGB(255,165,0),
-        Color3.fromRGB(70,130,180),Color3.fromRGB(220,20,60),Color3.fromRGB(124,252,0),Color3.fromRGB(255,255,255)
+    local presets = { 
+        Color3.fromRGB(30,30,40),Color3.fromRGB(255,0,100),Color3.fromRGB(0,170,255),Color3.fromRGB(170,0,255), 
+        Color3.fromRGB(255,170,0),Color3.fromRGB(0,255,150),Color3.fromRGB(255,70,70),Color3.fromRGB(100,255,100), 
+        Color3.fromRGB(255,215,0),Color3.fromRGB(0,255,255),Color3.fromRGB(255,105,180),Color3.fromRGB(138,43,226), 
+        Color3.fromRGB(0,191,255),Color3.fromRGB(255,20,147),Color3.fromRGB(50,205,50),Color3.fromRGB(255,165,0), 
+        Color3.fromRGB(70,130,180),Color3.fromRGB(220,20,60),Color3.fromRGB(124,252,0),Color3.fromRGB(255,255,255) 
     }
     for i,col in ipairs(presets) do
         local b = Instance.new("TextButton")
@@ -361,12 +327,8 @@ local function createGUI()
         b.BackgroundColor3 = col; b.Text = ""; b.Parent = ThemePage
         Instance.new("UICorner",b).CornerRadius = UDim.new(0,14)
         addHover(b,b.Size,UDim2.new(0,68,0,68))
-        b.MouseButton1Click:Connect(function()
-            updateTheme(col)
-            notify("Theme Changed!")
-        end)
+        b.MouseButton1Click:Connect(function() updateTheme(col) notify("Theme Changed!") end)
     end
-
     createButton(ThemePage,"Random Theme",function()
         updateTheme(Color3.fromRGB(math.random(0,255),math.random(0,255),math.random(0,255)))
         notify("Random Theme Applied!")
@@ -374,7 +336,6 @@ local function createGUI()
 
     -- Set initial walkspeed
     handleWalkSpeed()
-
     updateToggleButtons()
     switchTab(getgenv().AlexGUIcurrentTab)
 end
@@ -385,9 +346,7 @@ FOVCircle.Thickness = 2; FOVCircle.NumSides = 60; FOVCircle.Filled = false
 
 local ESPBoxes = {}
 local function clearESP()
-    for _,b in pairs(ESPBoxes) do
-        b.Visible = false; b:Remove()
-    end
+    for _,b in pairs(ESPBoxes) do b.Visible = false; b:Remove() end
     ESPBoxes = {}
 end
 
@@ -418,14 +377,12 @@ RunService.RenderStepped:Connect(function()
     FOVCircle.Radius = getgenv().FOVRadius
     FOVCircle.Color = getgenv().FOVColor
     FOVCircle.Visible = getgenv().AimbotEnabled
-
     if getgenv().AimbotEnabled then
         local target = getClosestInFOV()
         if target and target.Character and target.Character:FindFirstChild("Head") then
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
         end
     end
-
     clearESP()
     if getgenv().ESPEnabled then
         for _, plr in Players:GetPlayers() do
@@ -433,13 +390,23 @@ RunService.RenderStepped:Connect(function()
                 local root = plr.Character.HumanoidRootPart
                 local head = plr.Character:FindFirstChild("Head")
                 if head then
-                    local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0,1,0))
-                    local footPos = Camera:WorldToViewportPoint(root.Position - Vector3.new(0,3,0))
+                    local head3D = head.Position + Vector3.new(0,1,0)
+                    local foot3D = root.Position - Vector3.new(0,3,0)
+                    local headVp = Camera:WorldToViewportPoint(head3D)
+                    local footVp = Camera:WorldToViewportPoint(foot3D)
+                    local headOnScreen = headVp.Z > 0 and headVp.X > 0 and headVp.X < Camera.ViewportSize.X and headVp.Y > 0 and headVp.Y < Camera.ViewportSize.Y
+                    local footOnScreen = footVp.Z > 0 and footVp.X > 0 and footVp.X < Camera.ViewportSize.X and footVp.Y > 0 and footVp.Y < Camera.ViewportSize.Y
+                    if not (headOnScreen or footOnScreen) then continue end
+                    if headVp.Z < 0 and footVp.Z < 0 then continue end
+                    local headPos = Vector2.new(headVp.X, headVp.Y)
+                    local footPos = Vector2.new(footVp.X, footVp.Y)
+                    local topY = math.min(headPos.Y, footPos.Y)
                     local height = math.abs(headPos.Y - footPos.Y)
+                    local centerX = (headPos.X + footPos.X) / 2
                     local width = height / 2
                     local box = Drawing.new("Square")
                     box.Size = Vector2.new(width, height)
-                    box.Position = Vector2.new(headPos.X - width/2, headPos.Y)
+                    box.Position = Vector2.new(centerX - width/2, topY)
                     box.Color = Color3.fromRGB(0,255,0)
                     box.Thickness = 2; box.Filled = false; box.Visible = true
                     table.insert(ESPBoxes, box)
@@ -452,15 +419,9 @@ end)
 -- Final Init
 createGUI()
 LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.6);
-    createGUI();
-    updateToggleButtons()
+    task.wait(0.6); createGUI(); updateToggleButtons()
 end)
-
 UserInputService.InputBegan:Connect(function(i,gp)
-    if not gp and i.KeyCode == Enum.KeyCode.X then
-        toggleGUI()
-    end
+    if not gp and i.KeyCode == Enum.KeyCode.X then toggleGUI() end
 end)
-
 notify("Alex's Ultimate GUI Loaded! • WalkSpeed 50 Toggle Added • FOV Starts at 60 • Press X to toggle", 5)
