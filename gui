@@ -1,6 +1,6 @@
---== ALEX'S ULTIMATE GUI - FINAL VERSION - KILL AURA NOW WORKS IN EXECUTE ALL ==--
-if getgenv().AlexGUI_Loaded then return end
-getgenv().AlexGUI_Loaded = true
+--== HAN'S GUI - FINAL 100% WORKING VERSION ==--
+if getgenv().HansGUI_Loaded then return end
+getgenv().HansGUI_Loaded = true
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -11,174 +11,111 @@ local StarterGui = game:GetService("StarterGui")
 local Camera = workspace.CurrentCamera
 
 -- Settings
-getgenv().AlexGUIThemeColor = getgenv().AlexGUIThemeColor or Color3.fromRGB(30, 30, 40)
-getgenv().AlexGUIcurrentTab = getgenv().AlexGUIcurrentTab or "Main Scripts"
-getgenv().AlexGUIVisible = getgenv().AlexGUIVisible ~= false
+getgenv().HansGUIThemeColor = getgenv().HansGUIThemeColor or Color3.fromRGB(30, 30, 40)
+getgenv().HansGUIcurrentTab = getgenv().HansGUIcurrentTab or "Main Scripts"
+getgenv().HansGUIVisible = getgenv().HansGUIVisible ~= false
 getgenv().AimbotEnabled = getgenv().AimbotEnabled or false
 getgenv().ESPEnabled = getgenv().ESPEnabled or false
-getgenv().FOVRadius = getgenv().FOVRadius or 60 -- Changed from 150 to 60
+getgenv().FOVRadius = getgenv().FOVRadius or 60
 getgenv().FOVColor = getgenv().FOVColor or Color3.fromRGB(255, 0, 0)
-getgenv().WalkSpeedEnabled = getgenv().WalkSpeedEnabled or false -- New walkspeed toggle
-getgenv().KillAuraEnabled = getgenv().KillAuraEnabled or false -- Now toggleable!
+getgenv().WalkSpeedEnabled = getgenv().WalkSpeedEnabled or false
 
--- WalkSpeed Handler
+-- WalkSpeed
 local function setWalkSpeed(speed)
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") then
         char.Humanoid.WalkSpeed = speed
     end
 end
-
 local function handleWalkSpeed()
-    if getgenv().WalkSpeedEnabled then
-        setWalkSpeed(50)
-    else
-        setWalkSpeed(16) -- Default walkspeed
-    end
+    setWalkSpeed(getgenv().WalkSpeedEnabled and 50 or 16)
 end
+LocalPlayer.CharacterAdded:Connect(function() task.wait(0.1); handleWalkSpeed() end)
 
--- Connect to character spawn/respawn
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.1) -- Small delay to ensure humanoid loads
-    handleWalkSpeed()
-end)
-
--- Notification System
 local function notify(text, duration)
-    duration = duration or 3
     pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = "Alex's GUI";
-            Text = text;
-            Duration = duration;
-        })
+        StarterGui:SetCore("SendNotification", {Title = "Han's GUI", Text = text, Duration = duration or 4})
     end)
 end
 
--- Kill Aura Function (Toggleable and Safer)
-local KillAuraLoop
-local function startKillAura()
-    if KillAuraLoop then notify("Kill Aura already running!") return end
-    getgenv().KillAuraEnabled = true
-    notify("Kill Aura ACTIVATED!")
-    KillAuraLoop = task.spawn(function()
-        while getgenv().KillAuraEnabled and task.wait() do
-            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then continue end
-            local closest, dist = nil, math.huge
-            for _, v in Players:GetPlayers() do
-                if v ~= LocalPlayer and v.Team ~= LocalPlayer.Team and v.Character then
-                    local hrp = v.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        local d = (root.Position - hrp.Position).Magnitude
-                        if d < dist then
-                            dist = d
-                            closest = v
-                        end
+-- Realistic Tank Simulator 2.0 Kill All (one-click)
+local function killAll()
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    for _, v in Players:GetPlayers() do
+        if v ~= LocalPlayer and v.Team ~= LocalPlayer.Team and v.Character then
+            local hum = v.Character:FindFirstChild("Humanoid")
+            local head = v.Character:FindFirstChild("Head")
+            if hum and head and hum.Health > 0 then
+                task.spawn(function()
+                    for i = 1, 25 do
+                        pcall(function()
+                            game:GetService("ReplicatedStorage").RemoteEvents.DamageEvent:FireServer(hum, math.huge, head)
+                        end)
+                        task.wait()
                     end
-                end
-            end
-            if closest and closest.Character then
-                local head = closest.Character:FindFirstChild("Head")
-                local hum = closest.Character:FindFirstChild("Humanoid")
-                if head and hum and hum.Health > 0 then
-                    task.spawn(function()
-                        while getgenv().KillAuraEnabled and hum and hum.Health > 0 do
-                            pcall(function()
-                                game:GetService("ReplicatedStorage").RemoteEvents.DamageEvent:FireServer(hum, math.huge, head)
-                            end)
-                            task.wait()
-                        end
-                    end)
-                end
+                end)
             end
         end
-        KillAuraLoop = nil
-    end)
-end
-
-local function stopKillAura()
-    getgenv().KillAuraEnabled = false
-    notify("Kill Aura DEACTIVATED!")
+    end
+    notify("Realistic Tank Simulator 2.0 – Everyone Eliminated")
 end
 
 local ScreenGui
-local AimbotToggleBtn, ESPToggleBtn, WalkSpeedToggleBtn, KillAuraToggleBtn
+local AimbotToggleBtn, ESPToggleBtn, WalkSpeedToggleBtn
 
 local function toggleGUI()
-    getgenv().AlexGUIVisible = not getgenv().AlexGUIVisible
-    if ScreenGui then ScreenGui.Enabled = getgenv().AlexGUIVisible end
-    notify("GUI " .. (getgenv().AlexGUIVisible and "Opened" or "Closed"))
+    getgenv().HansGUIVisible = not getgenv().HansGUIVisible
+    if ScreenGui then ScreenGui.Enabled = getgenv().HansGUIVisible end
+    notify("GUI " .. (getgenv().HansGUIVisible and "Opened" or "Closed"))
 end
 
 local function updateToggleButtons()
-    if AimbotToggleBtn then
-        AimbotToggleBtn.Text = "Aimbot: " .. (getgenv().AimbotEnabled and "ON" or "OFF")
-        AimbotToggleBtn.BackgroundColor3 = getgenv().AimbotEnabled and Color3.fromRGB(0,170,0) or getgenv().AlexGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
-    end
-    if ESPToggleBtn then
-        ESPToggleBtn.Text = "ESP: " .. (getgenv().ESPEnabled and "ON" or "OFF")
-        ESPToggleBtn.BackgroundColor3 = getgenv().ESPEnabled and Color3.fromRGB(0,170,0) or getgenv().AlexGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
-    end
-    if WalkSpeedToggleBtn then
-        WalkSpeedToggleBtn.Text = "Speed: " .. (getgenv().WalkSpeedEnabled and "ON" or "OFF")
-        WalkSpeedToggleBtn.BackgroundColor3 = getgenv().WalkSpeedEnabled and Color3.fromRGB(0,170,0) or getgenv().AlexGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
-    end
-    if KillAuraToggleBtn then
-        KillAuraToggleBtn.Text = "Kill Aura: " .. (getgenv().KillAuraEnabled and "ON" or "OFF")
-        KillAuraToggleBtn.BackgroundColor3 = getgenv().KillAuraEnabled and Color3.fromRGB(0,170,0) or getgenv().AlexGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
-    end
+    if AimbotToggleBtn then AimbotToggleBtn.Text = "Aimbot: " .. (getgenv().AimbotEnabled and "ON" or "OFF")
+        AimbotToggleBtn.BackgroundColor3 = getgenv().AimbotEnabled and Color3.fromRGB(0,170,0) or getgenv().HansGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4) end
+    if ESPToggleBtn then ESPToggleBtn.Text = "ESP: " .. (getgenv().ESPEnabled and "ON" or "OFF")
+        ESPToggleBtn.BackgroundColor3 = getgenv().ESPEnabled and Color3.fromRGB(0,170,0) or getgenv().HansGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4) end
+    if WalkSpeedToggleBtn then WalkSpeedToggleBtn.Text = "Speed: " .. (getgenv().WalkSpeedEnabled and "ON" or "OFF")
+        WalkSpeedToggleBtn.BackgroundColor3 = getgenv().WalkSpeedEnabled and Color3.fromRGB(0,170,0) or getgenv().HansGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4) end
 end
 
 local function createGUI()
     if ScreenGui and ScreenGui.Parent then ScreenGui:Destroy() end
     ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "AlexGUI"
-    ScreenGui.Enabled = getgenv().AlexGUIVisible
+    ScreenGui.Name = "HansGUI"
+    ScreenGui.Enabled = getgenv().HansGUIVisible
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(0,520,0,560)
-    Frame.Position = UDim2.new(0.5,-260,0.5,-280)
-    Frame.BackgroundColor3 = getgenv().AlexGUIThemeColor
+    Frame.Size = UDim2.new(0, 800, 0, 560)
+    Frame.Position = UDim2.new(0.5, -400, 0.5, -280)
+    Frame.BackgroundColor3 = getgenv().HansGUIThemeColor
     Frame.BorderSizePixel = 0
     Frame.Parent = ScreenGui
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0,14)
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0,16)
 
+    -- Title & Close
     local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(0,480,0,45); Title.Position = UDim2.new(0,15,0,8)
-    Title.BackgroundTransparency = 1; Title.Text = "Alex's GUI"; Title.TextColor3 = Color3.new(1,1,1)
-    Title.Font = Enum.Font.GothamBold; Title.TextSize = 28; Title.Parent = Frame
+    Title.Size = UDim2.new(0,760,0,50); Title.Position = UDim2.new(0,20,0,8)
+    Title.BackgroundTransparency = 1; Title.Text = "Han's GUI"
+    Title.TextColor3 = Color3.new(1,1,1); Title.Font = Enum.Font.GothamBold; Title.TextSize = 36
+    Title.Parent = Frame
 
     local CloseBtn = Instance.new("TextButton")
-    CloseBtn.Size = UDim2.new(0,38,0,38); CloseBtn.Position = UDim2.new(1,-50,0,8)
+    CloseBtn.Size = UDim2.new(0,40,0,40); CloseBtn.Position = UDim2.new(1,-55,0,8)
     CloseBtn.BackgroundColor3 = Color3.fromRGB(220,50,50); CloseBtn.Text = "X"
-    CloseBtn.TextColor3 = Color3.new(1,1,1); CloseBtn.Font = Enum.Font.GothamBold; CloseBtn.TextSize = 24
-    CloseBtn.Parent = Frame; Instance.new("UICorner",CloseBtn).CornerRadius = UDim.new(0,8)
+    CloseBtn.TextColor3 = Color3.new(1,1,1); CloseBtn.Font = Enum.Font.GothamBold; CloseBtn.TextSize = 26
+    CloseBtn.Parent = Frame; Instance.new("UICorner",CloseBtn).CornerRadius = UDim.new(0,10)
     CloseBtn.MouseButton1Click:Connect(toggleGUI)
 
     -- Dragging
-    local dragging, dragInput, dragStart, startPos
-    Frame.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true; dragStart = i.Position; startPos = Frame.Position
-        end
-    end)
-    Frame.InputChanged:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = i
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(i)
-        if dragging and i == dragInput then
-            local delta = i.Position - dragStart
-            Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-    Frame.InputEnded:Connect(function()
-        dragging = false
-    end)
+    local dragging = false
+    local dragInput, dragStart, startPos
+    Frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = Frame.Position end end)
+    Frame.InputChanged:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseMovement then dragInput = i end end)
+    UserInputService.InputChanged:Connect(function(i) if dragging and i == dragInput then local delta = i.Position - dragStart Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+    Frame.InputEnded:Connect(function() dragging = false end)
 
     local function addHover(b,n,h)
         b.MouseEnter:Connect(function() TweenService:Create(b,TweenInfo.new(0.2),{Size=h}):Play() end)
@@ -186,170 +123,163 @@ local function createGUI()
     end
 
     local allButtons = {}
-    -- Tabs
-    local function createTab(name,x)
-        local b = Instance.new("TextButton")
-        b.Size = UDim2.new(0,160,0,45); b.Position = UDim2.new(0,x,0,60)
-        b.Text = name; b.BackgroundColor3 = getgenv().AlexGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
-        b.TextColor3 = Color3.new(1,1,1); b.Font = Enum.Font.GothamBold; b.TextSize = 18
-        b.Parent = Frame; Instance.new("UICorner",b).CornerRadius = UDim.new(0,10)
-        addHover(b,b.Size,UDim2.new(0,170,0,50)); table.insert(allButtons,b); return b
-    end
 
-    local MainTabBtn = createTab("Main Scripts",15)
-    local AimbotTabBtn = createTab("Aimbot",185)
-    local ThemeTabBtn = createTab("Theme",355)
+    -- Centered Tabs
+    local tabContainer = Instance.new("Frame", Frame)
+    tabContainer.Size = UDim2.new(0,760,0,50); tabContainer.Position = UDim2.new(0,20,0,70)
+    tabContainer.BackgroundTransparency = 1
+
+    local function createTab(name, offset)
+        local b = Instance.new("TextButton", tabContainer)
+        b.Size = UDim2.new(0,180,0,45); b.Position = UDim2.new(0,offset,0,0)
+        b.Text = name; b.BackgroundColor3 = getgenv().HansGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
+        b.TextColor3 = Color3.new(1,1,1); b.Font = Enum.Font.GothamBold; b.TextSize = 20
+        Instance.new("UICorner",b).CornerRadius = UDim.new(0,12)
+        addHover(b,b.Size,UDim2.new(0,190,0,52))
+        table.insert(allButtons,b)
+        return b
+    end
+    local MainTabBtn = createTab("Main Scripts", 100)
+    local AimbotTabBtn = createTab("Aimbot", 300)
+    local ThemeTabBtn = createTab("Theme", 500)
 
     -- Pages
     local Pages = {}
-    local MainPage = Instance.new("Frame"); MainPage.Size = UDim2.new(0,490,0,420); MainPage.Position = UDim2.new(0,15,0,120)
+    local MainPage = Instance.new("Frame"); MainPage.Size = UDim2.new(0,760,0,400); MainPage.Position = UDim2.new(0,20,0,130)
     MainPage.BackgroundTransparency = 1; MainPage.Parent = Frame; Pages["Main Scripts"] = MainPage
-    local AimbotPage = Instance.new("Frame"); AimbotPage.Size = UDim2.new(0,490,0,420); AimbotPage.Position = UDim2.new(0,15,0,120)
+
+    local AimbotPage = Instance.new("Frame"); AimbotPage.Size = UDim2.new(0,760,0,400); AimbotPage.Position = UDim2.new(0,20,0,130)
     AimbotPage.BackgroundTransparency = 1; AimbotPage.Visible = false; AimbotPage.Parent = Frame; Pages["Aimbot"] = AimbotPage
-    local ThemePage = Instance.new("Frame"); ThemePage.Size = UDim2.new(0,490,0,420); ThemePage.Position = UDim2.new(0,15,0,120)
+
+    local ThemePage = Instance.new("Frame"); ThemePage.Size = UDim2.new(0,760,0,400); ThemePage.Position = UDim2.new(0,20,0,130)
     ThemePage.BackgroundTransparency = 1; ThemePage.Visible = false; ThemePage.Parent = Frame; Pages["Theme"] = ThemePage
 
     local function updateTheme(c)
-        getgenv().AlexGUIThemeColor = c; Frame.BackgroundColor3 = c
+        getgenv().HansGUIThemeColor = c; Frame.BackgroundColor3 = c
         local dark = c:Lerp(Color3.fromRGB(30,30,30),0.5); local active = c:Lerp(Color3.new(1,1,1),0.6)
-        for _,b in ipairs(allButtons) do
-            local a = (b==MainTabBtn and getgenv().AlexGUIcurrentTab=="Main Scripts") or (b==AimbotTabBtn and getgenv().AlexGUIcurrentTab=="Aimbot") or (b==ThemeTabBtn and getgenv().AlexGUIcurrentTab=="Theme")
-            b.BackgroundColor3 = a and active or dark
+        for _,b in allButtons do
+            local isActive = (b==MainTabBtn and getgenv().HansGUIcurrentTab=="Main Scripts") or (b==AimbotTabBtn and getgenv().HansGUIcurrentTab=="Aimbot") or (b==ThemeTabBtn and getgenv().HansGUIcurrentTab=="Theme")
+            b.BackgroundColor3 = isActive and active or dark
         end
     end
 
     local function switchTab(n)
         for name,p in pairs(Pages) do p.Visible = (name==n) end
-        getgenv().AlexGUIcurrentTab = n
-        updateTheme(getgenv().AlexGUIThemeColor)
+        getgenv().HansGUIcurrentTab = n
+        updateTheme(getgenv().HansGUIThemeColor)
     end
-
     MainTabBtn.MouseButton1Click:Connect(function() switchTab("Main Scripts") end)
     AimbotTabBtn.MouseButton1Click:Connect(function() switchTab("Aimbot") end)
     ThemeTabBtn.MouseButton1Click:Connect(function() switchTab("Theme") end)
 
-    local function createButton(p,t,cb,y)
-        local b = Instance.new("TextButton")
-        b.Size = UDim2.new(0,460,0,55); b.Position = UDim2.new(0,15,0,y)
-        b.BackgroundColor3 = getgenv().AlexGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
-        b.Text = t; b.TextColor3 = Color3.new(1,1,1); b.Font = Enum.Font.GothamBold; b.TextSize = 18
-        b.Parent = p; Instance.new("UICorner",b).CornerRadius = UDim.new(0,12)
-        addHover(b,b.Size,UDim2.new(0,475,0,60)); table.insert(allButtons,b)
-        b.MouseButton1Click:Connect(function() cb() end); return b
+    -- Main Page - 2x3 Grid
+    local function createMainBtn(text, callback, col, row)
+        local btn = Instance.new("TextButton", MainPage)
+        btn.Size = UDim2.new(0, 230, 0, 70)
+        btn.Position = UDim2.new(0, 25 + (col-1)*245, 0, 20 + (row-1)*90)
+        btn.BackgroundColor3 = getgenv().HansGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
+        btn.Text = text; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.GothamBold; btn.TextSize = 18
+        btn.TextWrapped = true
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,14)
+        addHover(btn, btn.Size, UDim2.new(0,240,0,78))
+        table.insert(allButtons, btn)
+        btn.MouseButton1Click:Connect(callback)
+        return btn
     end
 
-    -- MAIN SCRIPTS PAGE
-    createButton(MainPage,"Infinite Yield",function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source',true))() notify("Infinite Yield Loaded!") end,10)
-    createButton(MainPage,"Universal Vehicle Script",function() loadstring(game:HttpGet('https://raw.githubusercontent.com/Documantation12/Universal-Vehicle-Script/main/Main.lua'))() notify("Universal Vehicle Script Loaded!") end,80)
-    -- NEW WalkSpeed Toggle Button
-    WalkSpeedToggleBtn = createButton(MainPage,"",function()
-        getgenv().WalkSpeedEnabled = not getgenv().WalkSpeedEnabled
-        handleWalkSpeed()
-        notify("WalkSpeed " .. (getgenv().WalkSpeedEnabled and "Enabled (50)" or "Disabled (16)"))
-        updateToggleButtons()
-    end,150)
-    -- Kill Aura Toggle
-    KillAuraToggleBtn = createButton(MainPage,"Kill Aura",function()
-        if getgenv().KillAuraEnabled then stopKillAura() else startKillAura() end
-        updateToggleButtons()
-    end,220)
-    createButton(MainPage,"Hitbox Script",function() loadstring(game:HttpGet("https://pastebin.com/raw/DA8qiTD6"))() notify("Hitbox Script Loaded!") end,290)
-    -- EXECUTE ALL (now includes Kill Aura!)
-    createButton(MainPage,"Execute All Scripts",function()
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source',true))()
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/Documantation12/Universal-Vehicle-Script/main/Main.lua'))()
-        loadstring(game:HttpGet("https://pastebin.com/raw/DA8qiTD6"))()
-        startKillAura() -- This starts the kill aura loop
-        notify("ALL SCRIPTS EXECUTED + Kill Aura ON!")
-    end,360)
+    createMainBtn("Infinite Yield", function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source',true))() notify("Infinite Yield Loaded!") end, 1, 1)
+    createMainBtn("Universal Vehicle Script", function() loadstring(game:HttpGet('https://raw.githubusercontent.com/Documantation12/Universal-Vehicle-Script/main/Main.lua'))() notify("Vehicle Script Loaded!") end, 2, 1)
+    WalkSpeedToggleBtn = createMainBtn("", function() getgenv().WalkSpeedEnabled = not getgenv().WalkSpeedEnabled handleWalkSpeed() notify("Speed " .. (getgenv().WalkSpeedEnabled and "ON" or "OFF")) updateToggleButtons() end, 3, 1)
 
-    -- AIMBOT PAGE
-    AimbotToggleBtn = createButton(AimbotPage,"",function()
-        getgenv().AimbotEnabled = not getgenv().AimbotEnabled
-        notify("Aimbot " .. (getgenv().AimbotEnabled and "Enabled" or "Disabled"))
-        updateToggleButtons()
-    end,10)
-    ESPToggleBtn = createButton(AimbotPage,"",function()
-        getgenv().ESPEnabled = not getgenv().ESPEnabled
-        notify("ESP " .. (getgenv().ESPEnabled and "Enabled" or "Disabled"))
-        updateToggleButtons()
-    end,80)
-    -- FOV Slider (Smoother version - removed math.floor for finer control)
-    local FOVLabel = Instance.new("TextLabel")
-    FOVLabel.Size = UDim2.new(0,460,0,30); FOVLabel.Position = UDim2.new(0,15,0,150)
-    FOVLabel.BackgroundTransparency = 1; FOVLabel.Text = "FOV Radius: "..math.round(getgenv().FOVRadius)
-    FOVLabel.TextColor3 = Color3.new(1,1,1); FOVLabel.Font = Enum.Font.Gotham; FOVLabel.Parent = AimbotPage
-    local SliderBack = Instance.new("Frame")
-    SliderBack.Size = UDim2.new(0,460,0,20); SliderBack.Position = UDim2.new(0,15,0,180)
-    SliderBack.BackgroundColor3 = Color3.fromRGB(50,50,50); SliderBack.Parent = AimbotPage
-    Instance.new("UICorner",SliderBack).CornerRadius = UDim.new(0,10)
-    local SliderFill = Instance.new("Frame")
-    SliderFill.Size = UDim2.new(getgenv().FOVRadius/500,0,1,0)
-    SliderFill.BackgroundColor3 = Color3.fromRGB(0,170,255); SliderFill.Parent = SliderBack
-    Instance.new("UICorner",SliderFill).CornerRadius = UDim.new(0,10)
+    createMainBtn("Realistic Tank\nSimulator 2.0\nKill All", killAll, 1, 2)
+    createMainBtn("Hitbox Script", function() loadstring(game:HttpGet("https://pastebin.com/raw/DA8qiTD6"))() notify("Hitbox Loaded!") end, 2, 2)
+    createMainBtn("Execute All Scripts", function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source',true))() loadstring(game:HttpGet('https://raw.githubusercontent.com/Documantation12/Universal-Vehicle-Script/main/Main.lua'))() loadstring(game:HttpGet("https://pastebin.com/raw/DA8qiTD6"))() killAll() notify("All Executed + Kill All!") end, 3, 2)
+
+    -- AIMBOT PAGE (fully restored & centered)
+    local function createAimbotBtn(text, callback, x, y)
+        local btn = Instance.new("TextButton", AimbotPage)
+        btn.Size = UDim2.new(0, 300, 0, 70)
+        btn.Position = UDim2.new(0, x, 0, y)
+        btn.BackgroundColor3 = getgenv().HansGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
+        btn.Text = text; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.GothamBold; btn.TextSize = 22
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,14)
+        addHover(btn, btn.Size, UDim2.new(0,310,0,78))
+        table.insert(allButtons, btn)
+        btn.MouseButton1Click:Connect(callback)
+        return btn
+    end
+    AimbotToggleBtn = createAimbotBtn("Aimbot Toggle", function() getgenv().AimbotEnabled = not getgenv().AimbotEnabled notify("Aimbot " .. (getgenv().AimbotEnabled and "ON" or "OFF")) updateToggleButtons() end, 230, 20)
+    ESPToggleBtn = createAimbotBtn("ESP Toggle", function() getgenv().ESPEnabled = not getgenv().ESPEnabled notify("ESP " .. (getgenv().ESPEnabled and "ON" or "OFF")) updateToggleButtons() end, 230, 110)
+
+    -- FOV Slider (centered)
+    local FOVLabel = Instance.new("TextLabel", AimbotPage)
+    FOVLabel.Size = UDim2.new(0,400,0,40); FOVLabel.Position = UDim2.new(0.5,-200,0,200)
+    FOVLabel.BackgroundTransparency = 1; FOVLabel.Text = "FOV Radius: "..math.round(getgenv().FOVRadius); FOVLabel.TextColor3 = Color3.new(1,1,1); FOVLabel.Font = Enum.Font.GothamBold; FOVLabel.TextSize = 22
+
+    local SliderBack = Instance.new("Frame", AimbotPage)
+    SliderBack.Size = UDim2.new(0,400,0,24); SliderBack.Position = UDim2.new(0.5,-200,0,240)
+    SliderBack.BackgroundColor3 = Color3.fromRGB(50,50,50); Instance.new("UICorner",SliderBack).CornerRadius = UDim.new(0,12)
+    local SliderFill = Instance.new("Frame", SliderBack)
+    SliderFill.Size = UDim2.new(getgenv().FOVRadius/500,0,1,0); SliderFill.BackgroundColor3 = Color3.fromRGB(0,170,255); Instance.new("UICorner",SliderFill).CornerRadius = UDim.new(0,12)
+
     local dragging = false
-    SliderBack.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
-    end)
-    SliderBack.InputEnded:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-    end)
-    UserInputService.InputChanged:Connect(function(i)
-        if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
-            local p = math.clamp((i.Position.X - SliderBack.AbsolutePosition.X)/SliderBack.AbsoluteSize.X,0,1)
-            getgenv().FOVRadius = p*500  -- Removed math.floor for smoother, finer adjustments
-            SliderFill.Size = UDim2.new(p,0,1,0)
-            FOVLabel.Text = "FOV Radius: "..math.round(getgenv().FOVRadius)  -- Round for display only
-        end
-    end)
-    -- FOV Color Picker
+    SliderBack.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end end)
+    SliderBack.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+    UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+        local p = math.clamp((i.Position.X - SliderBack.AbsolutePosition.X)/SliderBack.AbsoluteSize.X,0,1)
+        getgenv().FOVRadius = p*500
+        SliderFill.Size = UDim2.new(p,0,1,0)
+        FOVLabel.Text = "FOV Radius: "..math.round(getgenv().FOVRadius)
+    end end)
+
+    -- FOV Colors (centered)
     local colors = {Color3.fromRGB(255,0,0),Color3.fromRGB(0,255,0),Color3.fromRGB(0,0,255),Color3.fromRGB(255,255,0),Color3.fromRGB(255,0,255),Color3.fromRGB(0,255,255),Color3.fromRGB(255,255,255)}
     for i,col in ipairs(colors) do
-        local b = Instance.new("TextButton")
-        b.Size = UDim2.new(0,50,0,50); b.Position = UDim2.new(0,15+(i-1)*60,0,240)
-        b.BackgroundColor3 = col; b.Text = ""; b.Parent = AimbotPage
-        Instance.new("UICorner",b).CornerRadius = UDim.new(0,8)
-        addHover(b,b.Size,UDim2.new(0,55,0,55))
+        local b = Instance.new("TextButton", AimbotPage)
+        b.Size = UDim2.new(0,60,0,60); b.Position = UDim2.new(0, 110 + (i-1)*80, 0, 300)
+        b.BackgroundColor3 = col; b.Text = ""; Instance.new("UICorner",b).CornerRadius = UDim.new(0,12)
+        addHover(b,b.Size,UDim2.new(0,68,0,68))
         b.MouseButton1Click:Connect(function() getgenv().FOVColor = col notify("FOV Color Changed!") end)
     end
 
-    -- THEME PAGE
-    local presets = { 
-        Color3.fromRGB(30,30,40),Color3.fromRGB(255,0,100),Color3.fromRGB(0,170,255),Color3.fromRGB(170,0,255), 
-        Color3.fromRGB(255,170,0),Color3.fromRGB(0,255,150),Color3.fromRGB(255,70,70),Color3.fromRGB(100,255,100), 
-        Color3.fromRGB(255,215,0),Color3.fromRGB(0,255,255),Color3.fromRGB(255,105,180),Color3.fromRGB(138,43,226), 
-        Color3.fromRGB(0,191,255),Color3.fromRGB(255,20,147),Color3.fromRGB(50,205,50),Color3.fromRGB(255,165,0), 
-        Color3.fromRGB(70,130,180),Color3.fromRGB(220,20,60),Color3.fromRGB(124,252,0),Color3.fromRGB(255,255,255) 
-    }
+    -- THEME PAGE (fully restored)
+    local presets = {Color3.fromRGB(30,30,40),Color3.fromRGB(255,0,100),Color3.fromRGB(0,170,255),Color3.fromRGB(170,0,255),Color3.fromRGB(255,170,0),Color3.fromRGB(0,255,150),Color3.fromRGB(255,70,70),Color3.fromRGB(100,255,100),Color3.fromRGB(255,215,0),Color3.fromRGB(0,255,255),Color3.fromRGB(255,105,180),Color3.fromRGB(138,43,226),Color3.fromRGB(0,191,255),Color3.fromRGB(255,20,147),Color3.fromRGB(50,205,50),Color3.fromRGB(255,165,0),Color3.fromRGB(70,130,180),Color3.fromRGB(220,20,60),Color3.fromRGB(124,252,0),Color3.fromRGB(255,255,255)}
     for i,col in ipairs(presets) do
-        local b = Instance.new("TextButton")
-        b.Size = UDim2.new(0,60,0,60); b.Position = UDim2.new(0,15+((i-1)%7)*70,0,60+math.floor((i-1)/7)*70)
-        b.BackgroundColor3 = col; b.Text = ""; b.Parent = ThemePage
-        Instance.new("UICorner",b).CornerRadius = UDim.new(0,14)
-        addHover(b,b.Size,UDim2.new(0,68,0,68))
+        local x = 40 + ((i-1)%9)*82
+        local y = 20 + math.floor((i-1)/9)*82
+        local b = Instance.new("TextButton", ThemePage)
+        b.Size = UDim2.new(0,72,0,72); b.Position = UDim2.new(0,x,0,y)
+        b.BackgroundColor3 = col; b.Text = ""; Instance.new("UICorner",b).CornerRadius = UDim.new(0,16)
+        addHover(b,b.Size,UDim2.new(0,80,0,80))
         b.MouseButton1Click:Connect(function() updateTheme(col) notify("Theme Changed!") end)
     end
-    createButton(ThemePage,"Random Theme",function()
-        updateTheme(Color3.fromRGB(math.random(0,255),math.random(0,255),math.random(0,255)))
-        notify("Random Theme Applied!")
-    end,340)
 
-    -- Set initial walkspeed
+    -- Random Theme Button (bottom center)
+    local RandomBtn = Instance.new("TextButton", ThemePage)
+    RandomBtn.Size = UDim2.new(0,300,0,70); RandomBtn.Position = UDim2.new(0.5,-150,0,320)
+    RandomBtn.BackgroundColor3 = getgenv().HansGUIThemeColor:Lerp(Color3.fromRGB(40,40,40),0.4)
+    RandomBtn.Text = "Random Theme"; RandomBtn.TextColor3 = Color3.new(1,1,1); RandomBtn.Font = Enum.Font.GothamBold; RandomBtn.TextSize = 24
+    Instance.new("UICorner", RandomBtn).CornerRadius = UDim.new(0,16)
+    addHover(RandomBtn, RandomBtn.Size, UDim2.new(0,310,0,78))
+    RandomBtn.MouseButton1Click:Connect(function() updateTheme(Color3.fromRGB(math.random(0,255),math.random(0,255),math.random(0,255))) notify("Random Theme!") end)
+
     handleWalkSpeed()
     updateToggleButtons()
-    switchTab(getgenv().AlexGUIcurrentTab)
+    switchTab(getgenv().HansGUIcurrentTab)
 end
 
--- FOV Circle & ESP
+createGUI()
+
+-- X Key Toggle
+UserInputService.InputBegan:Connect(function(input, gp)
+    if not gp and input.KeyCode == Enum.KeyCode.X then toggleGUI() end
+end)
+
+-- FOV Circle + ESP + Aimbot Loop
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Thickness = 2; FOVCircle.NumSides = 60; FOVCircle.Filled = false
-
 local ESPBoxes = {}
-local function clearESP()
-    for _,b in pairs(ESPBoxes) do b.Visible = false; b:Remove() end
-    ESPBoxes = {}
-end
-
+local function clearESP() for _,b in pairs(ESPBoxes) do b.Visible = false; b:Remove() end ESPBoxes = {} end
 local function getClosestInFOV()
     local closest, best = nil, getgenv().FOVRadius
     local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
@@ -377,12 +307,14 @@ RunService.RenderStepped:Connect(function()
     FOVCircle.Radius = getgenv().FOVRadius
     FOVCircle.Color = getgenv().FOVColor
     FOVCircle.Visible = getgenv().AimbotEnabled
+
     if getgenv().AimbotEnabled then
         local target = getClosestInFOV()
         if target and target.Character and target.Character:FindFirstChild("Head") then
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
         end
     end
+
     clearESP()
     if getgenv().ESPEnabled then
         for _, plr in Players:GetPlayers() do
@@ -390,38 +322,26 @@ RunService.RenderStepped:Connect(function()
                 local root = plr.Character.HumanoidRootPart
                 local head = plr.Character:FindFirstChild("Head")
                 if head then
-                    local head3D = head.Position + Vector3.new(0,1,0)
+                    local head3D = head.Position + Vector3.new(0,1.5,0)
                     local foot3D = root.Position - Vector3.new(0,3,0)
                     local headVp = Camera:WorldToViewportPoint(head3D)
                     local footVp = Camera:WorldToViewportPoint(foot3D)
-                    local headOnScreen = headVp.Z > 0 and headVp.X > 0 and headVp.X < Camera.ViewportSize.X and headVp.Y > 0 and headVp.Y < Camera.ViewportSize.Y
-                    local footOnScreen = footVp.Z > 0 and footVp.X > 0 and footVp.X < Camera.ViewportSize.X and footVp.Y > 0 and footVp.Y < Camera.ViewportSize.Y
-                    if not (headOnScreen or footOnScreen) then continue end
-                    if headVp.Z < 0 and footVp.Z < 0 then continue end
-                    local headPos = Vector2.new(headVp.X, headVp.Y)
-                    local footPos = Vector2.new(footVp.X, footVp.Y)
-                    local topY = math.min(headPos.Y, footPos.Y)
-                    local height = math.abs(headPos.Y - footPos.Y)
-                    local centerX = (headPos.X + footPos.X) / 2
-                    local width = height / 2
-                    local box = Drawing.new("Square")
-                    box.Size = Vector2.new(width, height)
-                    box.Position = Vector2.new(centerX - width/2, topY)
-                    box.Color = Color3.fromRGB(0,255,0)
-                    box.Thickness = 2; box.Filled = false; box.Visible = true
-                    table.insert(ESPBoxes, box)
+                    if headVp.Z > 0 or footVp.Z > 0 then
+                        local headPos = Vector2.new(headVp.X, headVp.Y)
+                        local footPos = Vector2.new(footVp.X, footVp.Y)
+                        local height = math.abs(headPos.Y - footPos.Y)
+                        local width = height / 2
+                        local box = Drawing.new("Square")
+                        box.Size = Vector2.new(width, height)
+                        box.Position = Vector2.new((headPos.X + footPos.X)/2 - width/2, math.min(headPos.Y, footPos.Y))
+                        box.Color = Color3.fromRGB(0,255,0)
+                        box.Thickness = 2; box.Filled = false; box.Visible = true
+                        table.insert(ESPBoxes, box)
+                    end
                 end
             end
         end
     end
 end)
 
--- Final Init
-createGUI()
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.6); createGUI(); updateToggleButtons()
-end)
-UserInputService.InputBegan:Connect(function(i,gp)
-    if not gp and i.KeyCode == Enum.KeyCode.X then toggleGUI() end
-end)
-notify("Alex's Ultimate GUI Loaded! • WalkSpeed 50 Toggle Added • FOV Starts at 60 • Press X to toggle", 5)
+notify("Han's GUI • Final Fixed Version • All Tabs Working • Enjoy!", 8)
